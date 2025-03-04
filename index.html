@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <link
+      href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/css/style.css" />
+    <title>{{Voyager::setting('site.title')}}</title>
+    <style>
+        
+/* Reset mặc định */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    font-family: Arial, sans-serif;
+}
+
+#map {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+}/* Định dạng nút dropdown */
+.dropdown{
+    margin:50px;
+}
+.dropbtn {
+    position: relative;
+    z-index: 100;
+    background-color: #3498db;
+    color: white;
+    padding: 10px 15px;
+    font-size: 16px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+/* Dropdown mặc định ẩn với hiệu ứng mượt */
+.dropdown-content {
+    opacity: 0;
+    visibility: hidden;
+    position: absolute;
+    background-color: rgba(179, 38, 38, 0.6);
+    min-width: 100px;
+    margin-left: 5px;
+    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    border-radius: 5px;
+    transform: translateY(-10px); /* Trượt lên một chút khi ẩn */
+    transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out, visibility 0.4s;
+}
+
+/* Các mục trong dropdown */
+.dropdown-content a {
+    margin: 8px 10px;
+    padding: 5px;
+    text-decoration: none;
+    display: block;
+    color: white;
+    font-size: 14px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* Hiệu ứng hover cho các mục */
+/* .dropdown-content a:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+} */
+
+/* Khi dropdown hiển thị */
+.dropdown-content.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0); /* Trượt xuống mượt mà */
+}
+    </style>
+  </head>
+  <body>
+    <div class="dropdown">
+      <button onclick="myFunction()" class="dropbtn">Danh sách các</button>
+      <div id="myDropdown" class="dropdown-content">
+        <a href="#" id="drawPolygon">Vẽ Hình</a>
+        <a href="#">Link 2</a>
+        <a href="#">Link 3</a>
+      </div>
+    </div>
+    <div id="map"></div>
+ <script>
+    
+// Khởi tạo bản đồ với vị trí mặc định
+const map = new maplibregl.Map({
+  style: "https://tiles.openfreemap.org/styles/liberty",
+  center: [105.854444, 21.028511], // Vị trí mặc định (Hà Nội)
+  zoom: 19.5,
+  container: "map",
+});
+
+// Kiểm tra xem trình duyệt có hỗ trợ Geolocation không
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+      (position) => {
+          const userLocation = [
+              position.coords.longitude,
+              position.coords.latitude,
+          ];
+
+          // Đặt vị trí của người dùng làm trung tâm bản đồ
+          map.setCenter(userLocation);
+
+          // Thêm marker để hiển thị vị trí của người dùng
+          new maplibregl.Marker({ color: "red" })
+              .setLngLat(userLocation)
+              .addTo(map);
+      },
+      (error) => {
+          console.error("Lỗi khi lấy vị trí:", error);
+      }
+  );
+} else {
+  console.error("Trình duyệt không hỗ trợ Geolocation");
+}
+
+// Xử lý hiển thị dropdown với hiệu ứng mượt mà
+function myFunction() {
+  let dropdown = document.getElementById("myDropdown");
+  dropdown.classList.toggle("show");
+
+  if (dropdown.classList.contains("show")) {
+      dropdown.style.opacity = "1";
+      dropdown.style.transform = "translateY(0)";
+  } else {
+      dropdown.style.opacity = "0";
+      dropdown.style.transform = "translateY(-10px)";
+  }
+}
+
+// Đóng dropdown nếu bấm ra ngoài
+window.onclick = function (event) {
+  if (!event.target.matches(".dropbtn")) {
+      let dropdown = document.getElementById("myDropdown");
+      if (dropdown.classList.contains("show")) {
+          dropdown.classList.remove("show");
+          dropdown.style.opacity = "0";
+          dropdown.style.transform = "translateY(-10px)";
+      }
+  }
+};
+
+// Chức năng vẽ hình khi click vào "Link 1"
+let drawing = false;
+let coordinates = [];
+
+document.getElementById("drawPolygon").addEventListener("click", function () {
+  drawing = true;
+  coordinates = [];
+  alert("Nhấp vào bản đồ để tạo các điểm. Click đúp để hoàn thành hình.");
+});
+
+map.on("click", function (e) {
+  if (!drawing) return;
+
+  let lngLat = [e.lngLat.lng, e.lngLat.lat];
+  coordinates.push(lngLat);
+  console.log("Điểm được thêm:", lngLat);
+
+  // Vẽ marker tại mỗi điểm click
+  new maplibregl.Marker({ color: "blue" }).setLngLat(lngLat).addTo(map);
+});
+
+map.on("dblclick", function () {
+  if (!drawing || coordinates.length < 3) return;
+
+  // Đóng polygon
+  coordinates.push(coordinates[0]); // Kết nối điểm đầu với điểm cuối
+
+  // Vẽ polygon trên bản đồ
+  map.addLayer({
+      id: "polygon-ưefwefiwh",
+      type: "fill",
+      source: {
+          type: "geojson",
+          data: {
+              type: "Feature",
+              geometry: {
+                  type: "Polygon",
+                  coordinates: [coordinates],
+              },
+          },
+      },
+      layout: {},
+      paint: {
+          "fill-color": "#ff0000",
+          "fill-opacity": 0.5,
+      },
+  });
+
+  console.log("Hoàn thành vẽ hình:", coordinates);
+  drawing = false;
+});
+
+ </script>
+  </body>
+</html>
